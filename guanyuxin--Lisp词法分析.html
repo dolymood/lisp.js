@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html lang="zh-CN">
-<head>	
+<head>    
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <style>
     .p1{
@@ -18,8 +18,8 @@
     </style>
 </head>
 <body>
-	<input id="in"></input>
-	<div id="out"></div>
+    <input id="in"></input>
+    <div id="out"></div>
 <script>
 var TOKEN_COMMENT = 1
 var TOKEN_STRING  = 2
@@ -32,16 +32,16 @@ var TOKEN_RIGHT   = 9
 
 var str = "(+ 1 1)";
 var TokenReader = function(str){
-	this.str = str;
-	this.cur = 0;
-	this.strlen = str.length;
+    this.str = str;
+    this.cur = 0;
+    this.strlen = str.length;
 }
 TokenReader.prototype.error = function(msg){
-	console.log(msg)
+    console.log(msg)
 }
 TokenReader.prototype.nextChar = function(){
-	if(this.cur < this.strlen)
-		return this.str[this.cur++];
+    if(this.cur < this.strlen)
+        return this.str[this.cur++];
 }
 TokenReader.prototype.getToken = function(){
     var start = this.cur;
@@ -50,7 +50,7 @@ TokenReader.prototype.getToken = function(){
     if(!c)
         return 0;
     if(c == '\'' || c == '"'){
-    	var buffer = '';
+        var buffer = '';
         this.tokenType = TOKEN_STRING;
         cs = c;
         while(c = this.nextChar()){
@@ -60,7 +60,7 @@ TokenReader.prototype.getToken = function(){
             }else if(c=='\\'){
                 this.nextChar();
             }else{
-            	buffer += c;
+                buffer += c;
             }
         }
         if(!c){
@@ -81,7 +81,7 @@ TokenReader.prototype.getToken = function(){
             }
         }
         if(!c){
-        	end = this.cur;
+            end = this.cur;
         }
         this.value = this.str.substring(start+2,this.cur);
     }else if(c=='/' && this.str[this.cur]=='*'){
@@ -147,16 +147,16 @@ TokenReader.prototype.getToken = function(){
 var inDom = document.getElementById("in");
 var outDom = document.getElementById("out");
 inDom.addEventListener('input', function(){
-	var str = inDom.value + '\n';
-	var reader = new TokenReader(str);
-	var result = "";
-	var res;
-	while(res = reader.getToken()){
+    var str = inDom.value + '\n';
+    var reader = new TokenReader(str);
+    var result = "";
+    var res;
+    while(res = reader.getToken()){
         if(res == TOKEN_SPACE)
             continue;
         result += '<p class="p'+res+'">'+reader.value+'</p>';
     }
-	outDom.innerHTML = result;
+    outDom.innerHTML = result;
 })
 
 </script>
