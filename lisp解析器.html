@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+    <head>
+		<meta charset='utf-8'>
+		<title>test</title>
+		<style>
+		    table {
+			    border: 1px solid #555;
+				border-collapse: collapse;
+				margin: 10px auto;
+				width: 1100px;
+			}
+			tr {
+			    background-color: #9C9CA0;
+				line-height: 28px;
+			}
+			tr td:last-child {
+			    background-color: #D2D2D8;
+				color: #2157CA;
+			}
+			.error {
+			    color: red;
+			}
+			tr td.error {
+			    color: red;
+			}
+			
+			header {
+			    border: 1px solid #555;
+				margin: auto;
+				text-align: center;
+				width: 1100px;
+			}
+			header div {
+			    width: 1060px;
+				height: 100px;
+				margin: 5px auto 10px;
+				border: 1px solid #888;
+				padding: 10px;
+				text-align: left;
+				overflow-y: scroll;
+			}
+			header input {
+				margin: 5px;
+				width: 1080px;
+			}
+		</style>
+		<script src="./lisp.js"></script>
+	</head>
+    <body>
+        <header>
+		    <input id="tt" type="text">
+			<div id="panel"></div>
+		</header>
+		<table border=1>
+		    
+		</table>
+		<script>
+        //写一个简单的lisp解析器，要求能够识别+ - * /
+        //比如(+ 1 2 3 4) => 10
+        //要求能够识别出语法错误，比如预算符不认识, 括号未匹配
+        var str1 = '(+ 1 2 3 4)',
+		    str2 = '(- 1 -2.5 +5.9 4)',
+			str3 = '(* 3.3 7.5 -5)',
+			str4 = '(/ 9 -3 1)',
+			str5 = '(/ 9 -3 0)',
+			str6 = '(+ 2 5 (* 1 2 (- 5 2 5 (/ 9 3)) 3))',
+			str7 = '(> 2.4 3)',
+			str8 = '(< 2 3)',
+			str9 = '(>= 2 3)',
+			str10 = '(<= 2 3)',
+			str11 = '(>= 2 2)',
+			str12 = '(<= 2 2)',
+			str13 = '(if (equal? 2 3) 1)',
+			str14 = '(if (equal? 2 2) 1 0)',
+			str15 = '(begin 3 (* 3 1))',
+			str16 = '(set! x 2)';
+			str17 = '(begin (define x 1) (set! x 2) (* x x))',
+			str18 = '(define r 3)',
+			str19 = '(if (equal? r 3) 1 0)',
+			str20 = '(set! r 5)',
+			str21 = '(equal? r 5)',
+			str22 = '(define area (lambda (r) (* 3.141592653 (* r r))))',
+			str23 = '(define square (lambda (x) (* x x)))',
+			str24 = '(define area1 (lambda (r) (if (<= r 2) (begin (set! r 3) (* 3.141592653 (* r r))) (* 3.141592653 (* r r)))))',
+			str25 = '(area 1)',
+			str26 = '(area1 1)',
+			str27 = '(area1 3)',
+			str28 = '(square 5)',
+			str29 = '(area (square 2))',
+			str30 = "(define strAdd (lambda (x y) (begin (define instrAdd (lambda (z) (+ x ':x:y:' y ':y:z:' z))) (instrAdd 'vvv'))))",
+			str31 = "(strAdd 'aaaa' 'bbbb')";
+		var html = '';
+		for (var i = 1, temp, tep; i <= 31; i++) {
+		    temp = 'str' + i;
+			try {
+			    tep = lisp.compute(window[temp]);
+				html += '<tr><td>' + window[temp] + '</td><td>' + tep + '</td></tr>';
+			} catch(ex) {
+			    tep = ex;
+				html += '<tr><td>' + window[temp] + '</td><td class="error">' + tep + '</td></tr>';
+				continue;
+			}
+		}
+		document.getElementsByTagName('table')[0].innerHTML = html;
+		var panel = document.getElementById('panel');
+		document.getElementById('tt').oninput = function() {
+		    if (this.value.length > 0) {
+				var val;
+				try {
+					val = lisp.compute(this.value);
+					panel.innerHTML = ('<p>' + this.value + ':' + val + '</p>') + panel.innerHTML;
+				} catch(ex) {
+					panel.innerHTML = ('<p class="error">' + this.value + ':'+ ex + '</p>') + panel.innerHTML;
+				}
+			}
+		};
+		
+		// test 并不能实现
+		// 正则表达式
+		var lisp1 = (function() {
+		    function compute(str) {
+                var reg = /^\(([-+*\/])((?:\s(?:[-+]?[0-9]*(?:\.[0-9]*)?))+)\)$/,
+					regParse = /^((?:\()?)([-+*\/])((?:\s(?:[-+]?[0-9]*(?:\.[0-9]*)?))+)((?:\))?)$/,//用于词法分析的正则
+					trimLeft = /^\s+/,//左空格正则
+					trimRight = /\s+$/,//右空格正则
+					splitNum = /\s+/,//按空格分隔正则
+                    result;
+                if (reg.test(str)) {
+                    var matches = str.match(reg),
+                        arithmetic = matches[1],
+                        allNum = matches[2].replace(trimLeft, '')
+                                           .replace(trimRight, '')
+                                           .split(splitNum);
+                    allNum.forEach(function(num, index, ary) {
+                        ary[index] = +num;
+                    });
+                    
+                    if (map[arithmetic]) {
+                        return map[arithmetic].apply(null, allNum);
+                    } else {
+                        throw 'The arithmetic must be +, -, * or /.';
+                    }
+                } else {
+                    console.log(str.match(regParse));
+                }
+            }
+			return {
+			    compute: compute
+			};
+		})();
+		
+        </script>
+    </body>
+</html>

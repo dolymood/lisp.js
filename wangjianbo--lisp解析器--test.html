@@ -1,0 +1,366 @@
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Debugger</title>
+</head>
+<body>
+<script>
+var Parser = (function(){
+function parse(source){
+  var i = 0, c = source[i], ret = [];  
+  var nameStart = (
+      "abcdefghijklmnopqrstuvwxyz"
+    + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    + "+-*/^%="
+  );
+  
+  function next(){
+    c = source[++i];
+  }
+  
+  function skip(){
+    //skip skip
+    while( c == ' ' || c == '\n' ||  c == '\t'){
+      next();
+    }
+    
+    //ignore comments
+    while( c == ';' ){      
+      for( next(); c == '\n'; next() ){}
+    }
+  }
+  
+  function name(){
+    var from = i, s = [];
+    
+    if( nameStart.indexOf(c) == -1 ){
+      reportErr(source, 'bad name', from);
+    }    
+    
+    do{
+      s.push(c);
+      next();
+    }while(nameStart.indexOf(c) != -1 || (c >= '0' && c <= '9') );    
+  
+    return {
+      type : 'name', 
+      val  : s.join(''),
+      from : from,
+      to   : i - 1
+    }
+  }  
+  
+  function num(){
+    var from = i, a = [];
+    
+    while( c ){//读取整数部分
+      if( c >= '0' && c <= '9'){
+        a.push(c);
+        next();
+      }else{
+        break;
+      }
+    }
+    
+    if( c == '.' ){//读取小数部分
+      a.push('.');
+      while( c ){
+        if( c >= '0' && c <= '9'){
+          a.push(c);
+          next();
+        }else{
+          break;
+        }
+      }      
+    }
+    
+    return {
+      type : 'num',
+      val  : a.join(''),
+      from : from,
+      to   : i-1
+    }  
+  }
+  
+  function str(){
+  }
+  
+  function expr(){
+    var from = i, fn, argv = [];
+    
+    next();             //跳过开始的(    
+    argv.push(name());  //读取函数名称
+    
+    while( c ){         //读取函数参数
+      skip();
+      
+      if( c == ')' ){   //若为), 结束读取表达式，跳过)
+        next();
+        return {
+          type : "expr",
+          from : from,
+          to   : i - 1,
+          val  : argv,
+        }; 
+      
+      }else if( c == '(' ){          
+        argv.push( expr() ); 
+      
+      }else if( c == '"' ){
+        argv.push( str() );
+      
+      }else if( c >= '0' && c <= '9' ){
+        argv.push( num() );
+        
+      }else if( nameStart.indexOf(c) != -1 ){
+        argv.push( name() );
+        
+      }else{
+        console.log( 'c =' + c);
+        reportErr(source, 'bad expression', from);
+      }
+    }
+    
+    reportErr(source, 'the parentheses was not closed', from);
+  }  
+  
+  while( c ){  
+    skip();
+    
+    if( c == '(' ){
+      ret.push( expr() );
+    }    
+  }
+  
+  return ret;
+}
+
+function reportErr(source, type, posi){  
+  var snap = (
+     posi - 10 > 0
+   ? source.slice(posi-10, posi + 10)
+   : source.slice(0, posi + 10)
+  );
+  
+  var line = function(n){
+    var i, a = [];
+    for(i=0; i<n; i++){
+      a.push('_');
+    }
+    return a.join('');
+  }
+  
+  var pointer = (
+      posi - 10 >= 0
+    ? line(10) + '^'
+    : line(posi) + '^'
+  );
+  
+  throw (
+      type + ", at " + posi + '\n'
+    + '\t' + snap + '\n'
+    + '\t' + pointer      
+  );
+}
+
+return { parse : parse };
+})();
+
+var Executer = (function(){
+'use strict';
+
+//创建运行环境
+function createScope(parent){
+  return Object.create(parent);
+}
+
+//内置函数部分
+var fns = {
+  /**
+  * 打印变量.
+  * @param  {Array<Token>}args
+  * @param  {JSON}scope
+  * @public
+  */
+  print : function(args, scope){
+    var value = this.__get__(args[0], scope);
+    console.log(value);
+  },
+
+  /**
+  * 定义变量.
+  * @param  {Array<Token>}args
+  * @param  {JSON}scope
+  * @return {Object}
+  * @public
+  */
+  define : function(args, scope){
+    var value, name = args[0];
+    
+    if( name.type != 'name' ){
+      throw (
+        'bad define statement, expacts a name as first argument, '
+       +'but given : <' + name.type + '>' + name.val + '!'
+      );
+    }
+    
+    value = this.__get__(args[1], scope);   
+    scope[name.val] = value;
+    
+    return value;
+  },
+  
+  /**
+  * define function as format : (lambda (fn x y) (...)).
+  * @param  {Array<Token>}args
+  * @param  {JSON}scope
+  * @return {Function}
+  * @public  
+  */
+  lambda : function(args, scope){
+    if(args.length != 2){
+      throw ('lambad statemnt expect two arguments but given : ' + args.length);
+    }
+
+    if( !(args[0].type == 'expr' && args[1].type == 'expr') ){
+      throw (
+         'bad lambda statemnt, expect (<expr>params, <expr>body),'
+        +'but given : (<' + args[0].type + '>, <' + args[1].type + '>)!'
+      );
+    }    
+    
+    var closur = createScope(scope);
+    var argv = args[0].val;
+    var body = args[1];
+    var me = this, fn;   
+
+    fn = function(args, scope){      
+      //用实参的值设置形参
+      argv.forEach(function(arg, i){
+        var defParam = arg.val;
+        var relParam = args[i];
+        var relValue = me.__get__(relParam, scope);       
+        closur[defParam] = relValue;
+      });
+      
+      //执行函数体      
+      return exec([body], closur);
+    };
+    
+    return fn;
+  },
+  
+  //算数操作函数----------------------------
+  '+' : function(args, scope){ 
+    return this.__reduceNum__(args, scope, function(sum, val){
+      return sum + val;
+    });
+  },
+  
+  '-' : function(args, scope){  
+    return this.__reduceNum__(args, scope, function(sum, val){
+      return sum - val;
+    }); 
+  },
+  
+  '*' : function(args, scope){   
+    return this.__reduceNum__(args, scope, function(sum, val){
+      return sum * val;
+    });   
+  },
+  
+  '/' : function(args, scope){
+    return this.__reduceNum__(args, scope, function(sum, val){
+      return sum / val;
+    });   
+  },
+  
+  
+  //私有函数----------------------  
+  __reduceNum__ : function(args, scope, fn){
+    var me = this;
+    var getVal = function(arg, scope, idx){
+      var val  = me.__get__(arg, scope);
+      var type = arg.type;
+      
+      if(typeof val != 'number'){
+        throw (
+            'expects type <number> as ' + (idx + 1) + 'nd arguments'
+          + ', but given: <' + typeof(val) + '>'
+        );            
+      }
+
+      return val;    
+    };
+    
+    return args.reduce(function(preVal, arg, idx){
+      preVal = (
+          typeof preVal == 'object'
+        ? getVal(preVal, scope, idx)
+        : preVal
+      );
+      
+      return fn(preVal, getVal(arg, scope, idx));
+    }); 
+  },
+  
+  __get__ : function(item, scope){
+    var val  = item.val;
+    var type = item.type;
+    
+    switch(type){
+      case 'expr': return evalExpr(item, scope);
+      case 'num' : return Number(val);
+      case 'name': return scope[val];      
+      case 'str' : return val;
+    }  
+  }
+};
+
+function evalExpr(expr, scope){
+  var fn = expr.val[0].val;
+  var args = expr.val.slice(1);
+ 
+  if(typeof scope[fn] == 'function'){
+    return scope[fn].call(scope, args, scope);
+  }else{
+    throw (
+      'unknown method :' + fn + ' at ' + expr.from
+    );
+  }
+}
+
+function exec(exprs, scope){
+  scope = scope || createScope(fns);
+  var result;
+  
+  try{
+    exprs.forEach(function(expr){      
+      result = evalExpr(expr, scope);
+    });    
+  }catch(e){
+    console.log(e);
+  }
+  
+  return result;
+}
+
+return { exec : exec };
+})();
+
+document.onclick = function(){
+  'use strict';
+  var exprs = Parser.parse(  
+     '(define a 4)'
+    +'(define b 5)'
+    +'(define fn1 (lambda (a b) (+ a b)))'
+    +'(define fn2 (lambda (x y) (+ a b)))'  
+    +'(print (fn1 1 2) )'
+    +'(print (fn2 1 2) )'
+  );
+
+  Executer.exec(exprs);
+}
+</script>
+</body>
+</html>

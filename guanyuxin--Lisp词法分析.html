@@ -1,0 +1,164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="zh-CN">
+<head>	
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+    .p1{
+        color: #0a0;
+    }
+    .p2{
+        color: #a00
+    }
+    .p4{
+        color: #909
+    }
+    .p8,.p9{
+        color:#990
+    }
+    </style>
+</head>
+<body>
+	<input id="in"></input>
+	<div id="out"></div>
+<script>
+var TOKEN_COMMENT = 1
+var TOKEN_STRING  = 2
+var TOKEN_NUMBER  = 4
+var TOKEN_VAR     = 5
+var TOKEN_MISC    = 6
+var TOKEN_SPACE   = 7
+var TOKEN_LEFT    = 8
+var TOKEN_RIGHT   = 9
+
+var str = "(+ 1 1)";
+var TokenReader = function(str){
+	this.str = str;
+	this.cur = 0;
+	this.strlen = str.length;
+}
+TokenReader.prototype.error = function(msg){
+	console.log(msg)
+}
+TokenReader.prototype.nextChar = function(){
+	if(this.cur < this.strlen)
+		return this.str[this.cur++];
+}
+TokenReader.prototype.getToken = function(){
+    var start = this.cur;
+    var end;
+    var c = this.nextChar(),cs;
+    if(!c)
+        return 0;
+    if(c == '\'' || c == '"'){
+    	var buffer = '';
+        this.tokenType = TOKEN_STRING;
+        cs = c;
+        while(c = this.nextChar()){
+            if(c == cs){
+                end = this.cur;
+                break;
+            }else if(c=='\\'){
+                this.nextChar();
+            }else{
+            	buffer += c;
+            }
+        }
+        if(!c){
+            this.error("字符串没有结尾");
+            return 0;
+        }else{
+            this.value = buffer;
+        }        
+    }else if(c == '/' && this.str[this.cur]=='/' ){
+        this.tokenType = TOKEN_COMMENT;
+        while(c = this.nextChar()){
+            if(c == '\n'){
+                end = this.cur;
+                break;
+            }
+            if(c == '\\'){
+                this.nextChar();
+            }
+        }
+        if(!c){
+        	end = this.cur;
+        }
+        this.value = this.str.substring(start+2,this.cur);
+    }else if(c=='/' && this.str[this.cur]=='*'){
+        this.tokenType=TOKEN_COMMENT;
+        this.nextChar();
+        while(c=this.nextChar()){
+            if(c=='*' && this.str[this.cur]=='/'){
+                this.nextChar();
+                end=this.cur;
+                break;
+            }
+        }
+        if(!c){
+            this.error("注释没有结尾");
+            return 0;
+        }
+        this.value = this.str.substring(start+2,this.cur-2);
+    }else if(c>='0' && c<='9' || c=='.' && this.str[this.cur]>='0' && this.str[this.cur]<='9'){
+        this.tokenType = TOKEN_NUMBER;
+        while(c >= '0' && c <= '9'){
+            c=this.nextChar();
+        }
+        if(c=='.'){
+            c=this.nextChar();
+            while(c>='0' && c<='9'){
+                c=this.nextChar();
+            }
+        }
+        if(c=='e' || c=='E'){
+            c=this.nextChar();
+            if(c=='-')
+                c=this.nextChar();
+            while(c>='0' && c<='9'){
+                c=this.nextChar();
+            }
+        }
+        this.cur--;
+        this.value = parseFloat(this.str.substring(start, this.cur));
+    }else if(c>='a' && c<='z' || c>='A' && c<='Z' || c=='_' || c=='$'){
+        this.tokenType = TOKEN_VAR;
+        c=this.nextChar();
+        while(c>='a' && c<='z' || c>='A' && c<='Z'|| c>='0' && c<='9' || c=='_' || c=='$')
+            c=this.nextChar();
+        this.cur--;
+        this.value = this.str.substring(start, this.cur);
+    }else if(/[+\-\*\/]/.test(c)){
+        this.tokenType = TOKEN_VAR;
+        this.value = c;
+    }else if(c == ' '){
+        this.tokenType = TOKEN_SPACE;
+        this.value = c;
+    }else if(c == '('){
+        this.tokenType = TOKEN_LEFT;
+        this.value = c;
+    }else if(c == ')'){
+        this.tokenType = TOKEN_RIGHT;
+        this.value = c;
+    }else{
+        return 0;
+    }
+    return this.tokenType;
+}
+var inDom = document.getElementById("in");
+var outDom = document.getElementById("out");
+inDom.addEventListener('input', function(){
+	var str = inDom.value + '\n';
+	var reader = new TokenReader(str);
+	var result = "";
+	var res;
+	while(res = reader.getToken()){
+        if(res == TOKEN_SPACE)
+            continue;
+        result += '<p class="p'+res+'">'+reader.value+'</p>';
+    }
+	outDom.innerHTML = result;
+})
+
+</script>
+</body>
+</html>
