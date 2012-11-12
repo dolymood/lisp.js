@@ -3,7 +3,7 @@ JS-lisp---
 
 <p>一个JavaScript版lisp解析器。</p>
 <p>参考Peter Norvig的 <a href='http://norvig.com/lispy.html'>How to Write a (Lisp) Interpreter (in Python)</a>。</p>
-<p>文件wangjianbo--lisp解析器--test.html和guanyuxin--Lisp词法分析.html为朋友写的。</p>
+<p>文件wangjianbo--lisp解析器--test.html和guanyuxin--Lisp词法分析.html是朋友所写。</p>
 <p>Lispy支持的Scheme子集的语法和语义</p>
 <p>Scheme的优美之处就在于我们只需要六种特殊形式，以及另外的三种语法构造——变量、常量和过程调用：</p>
 <table border="1" cellspacing="0" cellpadding="3">
