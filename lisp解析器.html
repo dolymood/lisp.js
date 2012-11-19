@@ -116,40 +116,6 @@
             }
         };
         
-        // test 并不能实现
-        // 正则表达式
-        var lisp1 = (function() {
-            function compute(str) {
-                var reg = /^\(([-+*\/])((?:\s(?:[-+]?[0-9]*(?:\.[0-9]*)?))+)\)$/,
-                    regParse = /^((?:\()?)([-+*\/])((?:\s(?:[-+]?[0-9]*(?:\.[0-9]*)?))+)((?:\))?)$/,//用于词法分析的正则
-                    trimLeft = /^\s+/,//左空格正则
-                    trimRight = /\s+$/,//右空格正则
-                    splitNum = /\s+/,//按空格分隔正则
-                    result;
-                if (reg.test(str)) {
-                    var matches = str.match(reg),
-                        arithmetic = matches[1],
-                        allNum = matches[2].replace(trimLeft, '')
-                                           .replace(trimRight, '')
-                                           .split(splitNum);
-                    allNum.forEach(function(num, index, ary) {
-                        ary[index] = +num;
-                    });
-                    
-                    if (map[arithmetic]) {
-                        return map[arithmetic].apply(null, allNum);
-                    } else {
-                        throw 'The arithmetic must be +, -, * or /.';
-                    }
-                } else {
-                    console.log(str.match(regParse));
-                }
-            }
-            return {
-                compute: compute
-            };
-        })();
-        
         </script>
     </body>
 </html>
