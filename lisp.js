@@ -1,5 +1,5 @@
 /**
- * 
+ * lisp解析器
  */
 var lisp = (function() {
     var toString = Object.prototype.toString,
