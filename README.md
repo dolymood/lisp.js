@@ -1,4 +1,4 @@
-JS-lisp---
+lisp.js
 ==
 
 <p>一个JavaScript版lisp解析器。</p>
